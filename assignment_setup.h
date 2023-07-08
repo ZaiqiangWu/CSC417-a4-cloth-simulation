@@ -18,6 +18,7 @@
 
 #include <mass_matrix_mesh.h>
 #include <linearly_implicit_euler.h>
+#include <explicit_euler.h>
 #include <dsvd.h>
 
 #include <dphi_cloth_triangle_dX.h>
@@ -34,7 +35,7 @@
 //collision detection stuff
 #include <collision_detection_cloth_sphere.h>
 #include <velocity_filter_cloth_sphere.h>
-
+#include <cassert>
 //Variable for geometry
 Eigen::MatrixXd V, V_skin; //vertices of simulation mesh //this will hold all individual pieces of cloth, I'll load some offsets
 Eigen::MatrixXi F, F_skin; //faces of simulation mesh
@@ -50,6 +51,7 @@ double YM = 1e5; //young's modulus
 double mu = 0.4; //poissons ratio
 double C = (YM*mu)/((1.0+mu)*(1.0-2.0*mu));
 double D = YM/(2.0*(1.0+mu));
+
 
 //BC
 std::vector<unsigned int> fixed_point_indices;
@@ -121,6 +123,8 @@ inline void simulate(Eigen::VectorXd &q, Eigen::VectorXd &qdot, double dt, doubl
     auto force = [&](Eigen::VectorXd &f, Eigen::Ref<const Eigen::VectorXd> q2, Eigen::Ref<const Eigen::VectorXd> qdot2) { 
         
             assemble_forces(f, P.transpose()*q2+x0, P.transpose()*qdot2, dX, V, F, a0, C,D);
+
+            assert(!f.hasNaN());
             f -= gravity;
         
             for(unsigned int pickedi = 0; pickedi < spring_points.size(); pickedi++) {
@@ -147,6 +151,10 @@ inline void simulate(Eigen::VectorXd &q, Eigen::VectorXd &qdot, double dt, doubl
     qtmp = q; 
     //unconstrained velocity
     linearly_implicit_euler(q, qdot, dt, M, force, stiffness, tmp_force, tmp_stiffness);
+    //explicit_euler(q,qdot,dt,M,force,tmp_force);
+    //energy_minimization(q,qdot,dt,M,force,tmp_force);
+    assert(!q.hasNaN());
+    assert(!qdot.hasNaN());
     
     //velocity filter 
     if(collision_detection_on) {

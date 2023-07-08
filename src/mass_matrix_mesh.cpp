@@ -1,5 +1,6 @@
 #include <mass_matrix_mesh.h>
 #include <vector>
+#include<iostream>
 //Input:
 //  q - generalized coordinates for the FEM system
 //  V - the nx3 matrix of undeformed vertex positions
@@ -13,18 +14,20 @@ void mass_matrix_mesh(Eigen::SparseMatrixd &M, Eigen::Ref<const Eigen::VectorXd>
                          double density, Eigen::Ref<const Eigen::VectorXd> areas) {
     int n_triangles = F.rows();
     std::vector<Eigen::Triplet<double>> TripletList;
-    M.setZero();
+
     int q_size = q.rows();
     M.resize(q_size,q_size);
+    M.setZero();
     for(int i=0;i<n_triangles;++i)
     {
-        Eigen::VectorXi element = F.row(i);
+        Eigen::RowVectorXi element = F.row(i);
+        //std::cout<<"element:"<<element<<std::endl;
         double area = areas(i);
         for(int vid=0;vid<3;++vid)
         {
             for(int vid2=0;vid2<3;++vid2)
             {
-                double item =density*area/12;
+                double item =density*area/12.0;
                 if(vid==vid2)
                 {
                     item = density*area/6.0;
@@ -35,13 +38,16 @@ void mass_matrix_mesh(Eigen::SparseMatrixd &M, Eigen::Ref<const Eigen::VectorXd>
                 }
             }
         }
-        M.setFromTriplets(TripletList.begin(),TripletList.end());
-        M.makeCompressed();
-
-
 
     }
+    /*for(int i=0;i<q_size;++i)
+    {
+        TripletList.emplace_back(i,i,0.1);
+    }*/
+    M.setFromTriplets(TripletList.begin(),TripletList.end());
+    M.makeCompressed();
 
+    //std::cout<<"det(M):"<<M.toDense().determinant()<<std::endl;//wrong!!
    
 }
  
